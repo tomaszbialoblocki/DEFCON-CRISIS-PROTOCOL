@@ -27,6 +27,7 @@ body{
     transition: transform 0.1s ease-out;
     background: #000;
     visibility: hidden; /* Ukrywa kontener, dopóki nie zostanie przeskalowany przez JS */
+    opacity: 0; /* Dodane dla płynniejszego przejścia */
 }
 
 /* Scanlines + flicker */
@@ -59,7 +60,13 @@ h1{margin:0; font-size:18px; letter-spacing:.12em}
   background:var(--panel); border:1px solid var(--line); border-radius:10px;
   box-shadow:0 12px 36px #000;
 }
-aside{padding:12px; display:flex; flex-direction:column}
+/* ASIDE (kolumna boczna) */
+aside{
+    padding:12px; 
+    display:flex; 
+    flex-direction:column; /* Zapewnia pionowy layout */
+    height: 100%; /* Wymusza dopasowanie do wysokości gridu */
+}
 .sectionTitle{font-weight:800; margin:4px 0 8px 4px; color:var(--amber)}
 .resGrid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
 .res{background:#050505; border:1px solid var(--line); border-radius:10px; padding:10px}
@@ -71,7 +78,12 @@ aside{padding:12px; display:flex; flex-direction:column}
 .mid{background:linear-gradient(90deg,#00e5ff,#00bcd4)}
 .bad{background:linear-gradient(90deg,#ff0033,#ff4444)}
 
-.sideBottom{margin-top:auto; display:grid; gap:8px}
+.sideBottom{
+    margin-top:auto; 
+    display:grid; 
+    gap:8px;
+    flex-shrink: 0; /* Zapewnia, że przyciski zawsze zajmą minimalną przestrzeń */
+}
 .btn{
   all:unset; display:inline-flex; align-items:center; gap:8px;
   padding:10px 14px; border:1px solid var(--line); border-radius:6px;
@@ -171,23 +183,73 @@ aside{padding:12px; display:flex; flex-direction:column}
 .energy i{width:14px; height:14px; border-radius:3px; background:#000; border:1px solid var(--line)}
 .energy i.on{background:linear-gradient(180deg,#0ff,#09c)}
 
-/* Log */
-.log{height:160px; overflow:auto; padding:10px; background:#050505; border:1px dashed var(--line); border-radius:10px; color:#8ff}
+/* Dziennik/Log */
+.log{
+    min-height: 100px; /* Minimalna wysokość, aby nie znikał */
+    flex-grow: 1; /* Zapewnia, że zajmie całą resztę przestrzeni w kolumnie */
+    overflow-y: auto; /* Scrollowanie w pionie */
+    padding:10px; 
+    background:#050505; 
+    border:1px dashed var(--line); 
+    border-radius:10px; 
+    color:#8ff
+}
 .pop{animation:pop .25s ease-out}
 @keyframes pop{from{transform:scale(.95); opacity:.5} to{transform:scale(1); opacity:1}}
 
 @media (max-width:1100px){ .grid{grid-template-columns:1fr} .hand{flex-wrap:wrap} }
 
-/* Boot screen */
-#boot{position:fixed; inset:0; background:#000; color:#0f0; z-index:9999; padding:20px; font-size:14px}
-#boot pre{white-space:pre-wrap}
+/* === NOWE STYLE STARTOWE (GLITCH/NEON) === */
+#glitch-intro { 
+  position: fixed; inset: 0; background: #000; display: flex; 
+  flex-direction: column; justify-content: center; align-items: center; 
+  z-index: 10000; opacity: 1; transition: opacity 1.5s ease-out 3.5s; /* Opóźnienie 3.5s + fade 1.5s */
+}
+.glitch-title {
+  font-family: "Share Tech Mono", monospace;
+  color: var(--ink); /* #0ff */
+  font-size: 80px;
+  text-shadow: 
+    0 0 10px #0ff, 
+    0 0 20px #0aa, 
+    0 0 30px #0aa;
+  animation: glitch-effect 5s infinite alternate;
+  letter-spacing: 0.2em;
+  line-height: 1.2;
+}
+.glitch-subtitle {
+  font-size: 30px;
+  color: #ff0;
+  text-shadow: 0 0 5px #ff0;
+  margin-top: 20px;
+  animation: scanline-flicker 0.1s infinite alternate;
+}
+
+@keyframes glitch-effect {
+  0% { transform: translate(0, 0); text-shadow: 0 0 10px #0ff; }
+  20% { transform: translate(-2px, 2px); text-shadow: 0 0 15px #0ff, 2px -2px 0px rgba(255, 0, 0, 0.4); }
+  40% { transform: translate(3px, -3px); text-shadow: 0 0 8px #0ff, -3px 3px 0px rgba(0, 255, 0, 0.4); }
+  60% { transform: translate(-1px, 1px); text-shadow: 0 0 12px #0ff; }
+  80% { transform: translate(4px, -2px); text-shadow: 0 0 18px #0ff, 4px -2px 0px rgba(0, 0, 255, 0.4); }
+  100% { transform: translate(0, 0); text-shadow: 0 0 10px #0ff; }
+}
+
+@keyframes scanline-flicker {
+    0% { opacity: 1; filter: brightness(1.1); }
+    100% { opacity: 0.95; filter: brightness(0.9); }
+}
+
 </style>
 </head>
 <body>
 
-<div id="main-container">
-<div id="boot"><pre id="bootLog"></pre></div>
+<div id="glitch-intro"> 
+    <div class="glitch-title">DEFCON</div>
+    <div class="glitch-subtitle">CRISIS PROTOCOL</div>
+</div>
 
+<div id="main-container">
+  
 <header>
   <h1>☢️ DEFCON: CRISIS PROTOCOL</h1>
   <div class="hud">
@@ -256,26 +318,9 @@ aside{padding:12px; display:flex; flex-direction:column}
     <div id="modalFoot" class="winFoot"></div>
   </div>
 </div>
-</div><script>
-/* ================= BOOT SCREEN ================= */
-const bootLines = [
-  "INITIALIZING CRISIS-PROTOCOL SYSTEM...",
-  "LOADING STRATEGIC DATABASE...",
-  "CONNECTING TO COMMAND NETWORK...",
-  "GEOSPATIAL MODULE ONLINE...",
-  "SECURITY CLEARANCE: LEVEL 3 ACCEPTED",
-  "--- ENTERING DEFCON SIMULATION ---"
-];
-(function boot(){
-  const pre=document.getElementById('bootLog');
-  let i=0;
-  (function step(){
-    if(i<bootLines.length){ pre.textContent += bootLines[i++]+"\n"; setTimeout(step,550); }
-    else setTimeout(()=>document.getElementById('boot').remove(),700);
-  })();
-})();
-
-/* ================ STAN GRY (Rozszerzony o strefy) ================ */
+</div>
+<script>
+/* ================= STAN GRY ================ */
 const S = {
   turn:1, energy:3, moduleIndex:0,
   res:{
@@ -287,7 +332,6 @@ const S = {
   hand:[], deck:[], discard:[],
   quizDone:Array(8).fill(false),
   defcon:3,
-  // Zależności sąsiedztwa stref: A <-> B <-> C (cyklicznie)
   zoneNeighbors: {
       A: ['B', 'C'],
       B: ['A', 'C'],
@@ -295,11 +339,8 @@ const S = {
   }
 };
 const ZONES = ['A', 'B', 'C'];
-
-/* Ikony modułów */
 const MOD_ICONS = ["🌊","🏛️","🚧","🔁","🤝","📣","🏕️","🚌"];
 
-/* TALIA (Karty mają globalne efekty + efekt zależny od strefy (zoneEffect)) */
 const DECK = [
  {module:0, emoji:"🗺️", title:"Mapowanie stref", text:"Modeluj lokalne strefy ryzyka (GIS).", cost:1,
   globalEffects:{budget:-5, staff:-5, bci:+2},
@@ -327,10 +368,9 @@ const DECK = [
   zoneEffect:{risk:-15, trust:+7}, log:"Bezpieczna relokacja ze Strefy $ZONE$."},
  {module:3, emoji:"🖥️", title:"Failover usług (BCP)", text:"Przełącz krytyczne systemy IT.", cost:2,
   globalEffects:{bci:+10, budget:-6, staff:+5},
-  zoneEffect:{}, log:"Globalne: Usługi działają bez przerw (BCP)."} // Karta globalna - nie wymaga wyboru strefy
+  zoneEffect:{}, log:"Globalne: Usługi działają bez przerw (BCP)."} 
 ];
 
-/* QUIZY (1× per moduł) */
 const QUIZZES = [
  {q:"Element oceny ryzyka na poziomie gminy to:", opts:["Analiza podatności i ekspozycji","Tylko lista sprzętu","Wyłącznie social media"], a:0, pass:{trust_A:+2, trust_B:+2, trust_C:+2, bci:+2}, fail:{trust_A:-1, trust_B:-1, trust_C:-1}},
  {q:"Kto kieruje działaniami OC na szczeblu gminy?", opts:["Wójt/Burmistrz/Prezydent","Dowolny urzędnik"], a:0, pass:{trust_A:+1, trust_B:+1, bci:+3}, fail:{trust_A:-1, trust_B:-1}},
@@ -348,28 +388,32 @@ const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const clamp=v=>Math.max(0,Math.min(100,v));
 function apply(eff, zone=''){
     for(const k in eff){
-        // Jeśli klucz ma już na końcu A, B lub C, oznacza to lokalny wskaźnik (np. risk_A), nie dodajemy nic
-        // W przeciwnym razie, jeśli podano strefę, tworzymy pełny klucz (np. risk_B)
         const isLocalKey = k.endsWith('_A') || k.endsWith('_B') || k.endsWith('_C');
         const key = isLocalKey ? k : (zone ? `${k}_${zone}` : k);
 
-        // Sprawdzamy, czy klucz istnieje w zasobach
         if (S.res.hasOwnProperty(key)) {
-            // Bezpieczne pobieranie i aktualizacja wartości
             S.res[key] = clamp((S.res[key] ?? 0) + eff[k]);
         } else if (!isLocalKey && !zone && S.res.hasOwnProperty(k)){
-             // Obsługa kluczy globalnych bez strefy (np. budget)
              S.res[k] = clamp((S.res[k] ?? 0) + eff[k]);
         }
     }
     renderRes(); updateDefcon();
 }
-function log(line){ $("#log").innerHTML = `<div>• ${line}</div>` + $("#log").innerHTML; }
+
+function log(line){ 
+    const logEl = $("#log");
+    if (logEl) {
+        const maxLines = 12;
+        logEl.insertAdjacentHTML('afterbegin', `<div class="pop">• ${line}</div>`);
+        while (logEl.children.length > maxLines) {
+            logEl.removeChild(logEl.lastChild);
+        }
+    }
+}
 function setEnergy(n){ S.energy=n; const box=$("#energy"); box.innerHTML=""; for(let i=0;i<3;i++){ const d=document.createElement("i"); if(i<n)d.classList.add("on"); box.appendChild(d); } }
 
 /* ================= RENDER ================= */
 function renderRes(){
-  // Global resources
   const globalKeys=['budget','staff','gear','bci'];
   globalKeys.forEach(k=>{
     $("#r-"+k).textContent=S.res[k];
@@ -377,7 +421,6 @@ function renderRes(){
     bar.className=(S.res[k]>=60?'good':S.res[k]>=40?'mid':'bad');
   });
 
-  // Local resources
   const localKeys=['trust_A','risk_A','trust_B','risk_B','trust_C','risk_C'];
   localKeys.forEach(k=>{
     $("#r-"+k).textContent=S.res[k];
@@ -396,8 +439,7 @@ function renderHand(){
   S.hand.forEach((c,i)=>{
     const el=document.createElement("div");
     el.className="cardlet pop"; el.dataset.i=i;
-    // Sprawdzenie, czy karta wymaga wyboru strefy
-    const needsZone = c.zoneEffect && Object.keys(c.zoneEffect).length > 0 && c.title !== "Failover usług (BCP)"; 
+    const needsZone = c.zoneEffect && Object.keys(c.zoneEffect).length > 0 && c.title !== "Failover usług (BCP)";
     el.innerHTML=`
       <div class="cost">⚡ ${c.cost}</div>
       <div class="modBadge" title="Moduł ${c.module+1}">${MOD_ICONS[c.module]||"◆"}</div>
@@ -483,34 +525,32 @@ function openCardModal(card, handIndex){
   if(S.energy<card.cost){ shakeEnergy(); return; }
 
   MTitle.textContent = `${MOD_ICONS[card.module]||"◆"} ${card.title}`;
-  MBody.innerHTML = `<p class="desc">${card.text}</p>`;
+  MBody.innerHTML = `<p class="desc">${card.text}</p>`; // Czyści i ustawia opis
   MFoot.innerHTML = `<button id="decideBtn" class="btn primary" disabled>▶️ WYKONAJ AKCJĘ</button>
                      <span class="badge">KOSZT: ⚡ ${card.cost}</span>`;
 
   let selectedZone = null;
-  let selectedOption = -1; // -1 oznacza brak wybranej opcji
+  let selectedOption = -1; 
   
-  // Wymuszenie needsZone
   const needsZone = card.zoneEffect && Object.keys(card.zoneEffect).length > 0 && card.title !== "Failover usług (BCP)"; 
 
   function updateDecideButton() {
-      // Przy założeniu jednej opcji 'AKTYWUJ' (która jest zawsze oznaczona jako data-i="0")
       const optionSelected = selectedOption === 0; 
       const zoneRequirementMet = !needsZone || selectedZone !== null;
       $("#decideBtn").disabled = !(optionSelected && zoneRequirementMet);
   }
 
-  // Jeśli karta wymaga wyboru strefy
+  // 1. Dodaj sekcję WYBORU STREFY (jeśli wymagana)
   if (needsZone) {
-      MBody.innerHTML += `
+      MBody.insertAdjacentHTML('beforeend', `
         <div class="sectionTitle" style="margin-top:12px; color:#f0f;">❗ WYBIERZ STREFĘ DZIAŁANIA (OBOWIĄZKOWO):</div>
         <div id="zoneSelect" class="zoneSelect">
             <button class="zoneButton" data-zone="A">STREFA A</button>
             <button class="zoneButton" data-zone="B">STREFA B</button>
             <button class="zoneButton" data-zone="C">STREFA C</button>
-        </div>`;
+        </div>`);
       
-      // LOGIKA WYBORU STREFY (POPRAWIONA)
+      // Wiązanie zdarzeń dla przycisków stref
       $$("#zoneSelect .zoneButton").forEach(btn => {
           btn.onclick = () => {
               $$("#zoneSelect .zoneButton").forEach(x => x.classList.remove('selected'));
@@ -521,25 +561,25 @@ function openCardModal(card, handIndex){
       });
   }
 
-  // Opcja Decyzji
-  MBody.innerHTML += `<div class="sectionTitle" style="margin-top:12px">DECYZJA OPERACYJNA:</div>
+  // 2. Dodaj Opcję Decyzji (AKTYWUJ)
+  MBody.insertAdjacentHTML('beforeend', `<div class="sectionTitle" style="margin-top:12px">DECYZJA OPERACYJNA:</div>
         <div class="optGrid">
         <div class="optionCard" data-i="0">
             <div class="optionHead">✔ AKTYWUJ</div>
             <div class="optionDesc">Potwierdź operację i zużyj energię.</div>
         </div>
-        </div>`;
+        </div>`);
 
-  // Umożliwienie kliknięcia opcji (AKTYWUJ)
+  // 3. Wiązanie zdarzeń dla opcji AKTYWUJ
   $$("#modal .optionCard").forEach(cardElement => {
       cardElement.onclick = () => {
           $$("#modal .optionCard").forEach(x => x.classList.remove('selected'));
           cardElement.classList.add('selected');
-          selectedOption = +cardElement.dataset.i; // Ustawia wybraną opcję na 0 (AKTYWUJ)
+          selectedOption = +cardElement.dataset.i; 
           updateDecideButton();
       };
       
-      // Aktywacja domyślna, jeśli karta nie wymaga strefy (aby przycisk był od razu klikalny)
+      // Automatyczna aktywacja, jeśli karta nie wymaga strefy
       if (!needsZone) {
           cardElement.classList.add('selected');
           selectedOption = +cardElement.dataset.i;
@@ -551,32 +591,21 @@ function openCardModal(card, handIndex){
   openModal();
 
   $("#decideBtn").onclick=()=>{
-    // Ostateczna weryfikacja
     if (selectedOption !== 0) { toast("Wybierz opcję AKTYWUJ!"); return; } 
     if (needsZone && !selectedZone) { toast("Wybierz strefę działania!"); return; }
 
     let finalLog = card.log;
 
-    // 1. Zastosuj efekty globalne
-    if (card.globalEffects) {
-        apply(card.globalEffects);
-    }
+    if (card.globalEffects) { apply(card.globalEffects); }
 
-    // 2. Zastosuj efekty lokalne (jeśli istnieją i wybrano strefę)
     if (needsZone && selectedZone) {
         const localEff = {};
-        for(const k in card.zoneEffect) {
-            // Ponieważ apply ma logikę dodającą _ZONE, możemy po prostu przekazać k:v
-            localEff[k] = card.zoneEffect[k]; 
-        }
-        apply(localEff, selectedZone); // Przekazujemy strefę jako argument
+        for(const k in card.zoneEffect) { localEff[k] = card.zoneEffect[k]; }
+        apply(localEff, selectedZone);
         finalLog = finalLog.replace('$ZONE$', selectedZone);
     }
     
-    // 3. Obsługa karty globalnej
-    if (!needsZone && finalLog.startsWith("Globalne: ")) {
-        finalLog = finalLog.substring("Globalne: ".length);
-    }
+    if (!needsZone && finalLog.startsWith("Globalne: ")) { finalLog = finalLog.substring("Globalne: ".length); }
 
     S.energy -= card.cost; setEnergy(S.energy);
     log(finalLog || "Decyzja podjęta.");
@@ -642,7 +671,12 @@ function endGame(win){
 /* ================= UI FUN ================= */
 function pulseEvent(){ const el=$("#event"); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
 function toast(t){ log(t); }
-function shakeEnergy(){ $("#energy").classList.remove('pop'); void $("#energy").offsetWidth; $("#energy").classList.add('pop'); toast("⚡ ZA MAŁO ENERGII"); }
+function shakeEnergy(){ 
+    $("#energy").classList.remove('pop'); 
+    void $("#energy").offsetWidth; 
+    $("#energy").classList.add('pop'); 
+    toast("⚡ ZA MAŁO ENERGII"); 
+}
 
 /* ================= DEFCON LOGIKA ================= */
 function updateDefcon(){
@@ -654,7 +688,7 @@ function updateDefcon(){
   $("#defconLevel").textContent = S.defcon;
 }
 
-/* ================= SKALOWANIE WIDOKU (POPRAWIONE) ================= */
+/* ================= SKALOWANIE WIDOKU ================= */
 function updateScaling() {
     const container = document.getElementById('main-container');
     const baseWidth = 1300;
@@ -662,38 +696,39 @@ function updateScaling() {
     const widthRatio = window.innerWidth / baseWidth;
     const heightRatio = window.innerHeight / baseHeight;
     
-    // Obliczanie współczynnika skalowania. Nie skalujemy powyżej 1 (jeśli okno jest większe niż 1300x900)
     const scale = Math.min(widthRatio, heightRatio, 1);
     
-    // Używamy tylko skalowania. Centrowanie jest obsługiwane przez CSS (body: flex/center)
     container.style.transform = `scale(${scale})`;
 }
 
 
-/* ================= START ================= */
+/* ================= START (WŁAŚCIWEJ GRY) ================= */
 function start(){
   buildDeck(); setEnergy(3); renderRes(); updateDefcon(); draw(3);
   $("#endTurn").onclick=endTurn;
   $("#restart").onclick=()=>location.reload();
   $("#hint").onclick=()=>toast("🎯 Zarządzaj zasobami globalnie, aby kontrolować ryzyko i poparcie w 3 strefach (A, B, C). Pamiętaj o propagacji ryzyka!");
-  setupRadar();
   
-  // Uruchomienie skalowania i jego aktualizacja przy zmianie rozmiaru okna
   window.addEventListener('resize', updateScaling);
   updateScaling();
 
-  // Pokaż kontener po obliczeniu początkowego skalowania
+  // Upewnij się, że główny kontener jest widoczny po starcie gry
   document.getElementById('main-container').style.visibility = 'visible';
+  document.getElementById('main-container').style.opacity = '1';
 }
-start();
 
-/* ================= RADAR / WIZUALIZACJA STREF (NAPRAWIONE SKALOWANIE) ================= */
+/* ================= RADAR / WIZUALIZACJA STREF ================= */
 function setupRadar(){
   const c=document.getElementById("radar"), ctx=c.getContext("2d");
   
-  // POPRAWKA: Pobieranie rozmiaru z parentElement zamiast window
-  function resize(){ c.width=c.parentElement.clientWidth; c.height=c.parentElement.clientHeight; }
-  resize(); addEventListener('resize',resize);
+  function resize(){ 
+      if (c.parentElement) {
+          c.width=c.parentElement.clientWidth; 
+          c.height=c.parentElement.clientHeight; 
+      }
+  }
+  resize(); 
+  addEventListener('resize',resize);
   let t=0;
 
   const zoneColors = {
@@ -707,6 +742,7 @@ function setupRadar(){
   }
 
   function loop(){
+    if (!c.parentElement || c.offsetParent === null) return; 
     ctx.fillStyle="rgba(0,0,0,0.25)";
     ctx.fillRect(0,0,c.width,c.height);
 
@@ -773,6 +809,32 @@ function setupRadar(){
   }
   loop();
 }
+
+/* ================= NOWA LOGIKA STARTOWA (GLITCH/NEON) ================= */
+
+function startIntro() {
+    const introEl = document.getElementById('glitch-intro');
+    // Czekaj na animację (5s glitch + 0.5s dla pewności)
+    const INTRO_DURATION_MS = 3500; 
+
+    setTimeout(() => {
+        if (introEl) {
+            introEl.style.opacity = '0';
+            // Czas na przejście opacity (1.5s)
+            setTimeout(() => {
+                introEl.remove(); 
+                start();
+            }, 1500); 
+        } else {
+            start();
+        }
+    }, INTRO_DURATION_MS);
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    startIntro();
+});
 </script>
 </body>
 </html>
