@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DEFCON: CRISIS PROTOCOL - GEOSIM EDITION</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* STYLES */
+:root{
+  --bg:#000; --panel:#0a0a0a; --ink:#0ff; --mut:#0dd; --line:#111;
+  --good:#0f0; --bad:#f00; --amber:#ff0; --acc:#0ff;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; color:var(--ink); background:#050505; overflow:hidden;
+  font-family:"Share Tech Mono", monospace;
+  text-shadow:0 0 6px #00ffff60;
+  display:flex; justify-content:center; align-items:center; /* Centrowanie kontenera */
+}
+/* Poprawka Skalowania: Główny kontener jest teraz skalowalny */
+#main-container {
+    width: 1300px; /* Bazowa szerokość dla której zaprojektowano UI */
+    height: 900px; /* Bazowa wysokość */
+    transform-origin: center; /* WAŻNA ZMIANA: Skalowanie od środka */
+    transition: transform 0.1s ease-out;
+    background: #000;
+    visibility: hidden; /* Ukrywa kontener, dopóki nie zostanie przeskalowany przez JS */
+}
+
+/* Scanlines + flicker */
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,255,255,.04) 0px,rgba(0,255,255,.04) 1px,transparent 1px,transparent 2px);
+  mix-blend-mode:overlay;
+}
+@keyframes flicker{0%,19%,21%,23%,25%,54%,56%,100%{opacity:.98}20%,24%,55%{opacity:.6}}
+body{animation:flicker 3s infinite}
+
+header{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 14px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,#060606,transparent);
+}
+h1{margin:0; font-size:18px; letter-spacing:.12em}
+.badge{
+  padding:6px 10px; border:1px solid var(--line); border-radius:6px;
+  background:#050505; color:var(--ink); font-size:12px;
+}
+.grid{
+  display:grid; 
+  grid-template-columns:320px 1fr; 
+  gap:12px; 
+  height:calc(100% - 54px); /* Używamy 100% wysokości głównego kontenera */
+  padding:12px;
+}
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 12px 36px #000;
+}
+aside{padding:12px; display:flex; flex-direction:column}
+.sectionTitle{font-weight:800; margin:4px 0 8px 4px; color:var(--amber)}
+.resGrid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.res{background:#050505; border:1px solid var(--line); border-radius:10px; padding:10px}
+.res b{display:block; font-size:12px; color:var(--mut); margin-bottom:6px}
+.res span{font-weight:800}
+.bar{height:8px; background:#000; border:1px solid var(--line); border-radius:999px; margin-top:8px; overflow:hidden}
+.bar>i{display:block; height:100%}
+.good{background:linear-gradient(90deg,#00ff00,#00cc00)}
+.mid{background:linear-gradient(90deg,#00e5ff,#00bcd4)}
+.bad{background:linear-gradient(90deg,#ff0033,#ff4444)}
+
+.sideBottom{margin-top:auto; display:grid; gap:8px}
+.btn{
+  all:unset; display:inline-flex; align-items:center; gap:8px;
+  padding:10px 14px; border:1px solid var(--line); border-radius:6px;
+  background:#050505; cursor:pointer;
+}
+.btn:hover{border-color:#0ff}
+.btn.primary{background:linear-gradient(180deg,#0c0c0c,#050505); border-color:#0aa}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+
+.table{position:relative; overflow:hidden}
+.board{
+  height:100%; 
+  display:flex; 
+  flex-direction:column; 
+  gap:8px; 
+  padding:12px; 
+  position:relative
+}
+
+/* Radar/Map background */
+#radar{position:absolute; inset:0; z-index:0}
+.radialMask{
+  position:absolute; inset:0; z-index:1; pointer-events:none;
+  background: radial-gradient(800px 400px at 50% 30%, rgba(0,255,255,.06), transparent 60%),
+              radial-gradient(600px 300px at 80% 20%, rgba(255,0,0,.05), transparent 70%);
+}
+
+/* Event / panel */
+.eventPanel{
+  position:relative; z-index:2; padding:14px; border-radius:10px; border:1px dashed var(--line);
+  background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,.7))
+}
+.tag{display:inline-flex; align-items:center; gap:6px; padding:3px 8px; border:1px solid var(--line); border-radius:6px; color:var(--amber); font-size:12px}
+.eventTitle{margin:6px 0 4px; font-size:18px}
+.desc{color:var(--mut); line-height:1.45}
+.flash{animation:flash 1s}
+@keyframes flash{0%,100%{box-shadow:0 0 0 0 rgba(0,255,255,0)}50%{box-shadow:0 0 0 14px rgba(0,255,255,.08)}}
+
+/* Hand (cards) */
+.hand{display:flex; justify-content:center; gap:14px; z-index:2; margin-top: auto;}
+.cardlet{
+  width:210px; height:300px; border-radius:12px; border:1px solid var(--line);
+  background:linear-gradient(180deg,#0b0b0b,#050505);
+  position:relative; padding:12px; cursor:pointer;
+  transform-origin:bottom center; transition:transform .18s, box-shadow .2s, filter .2s;
+  box-shadow:0 16px 40px #000;
+}
+.cardlet:hover{transform:translateY(-10px) scale(1.03); box-shadow:0 22px 60px #000; filter:saturate(1.2)}
+.cardlet .emoji{font-size:32px}
+.cardlet h4{margin:6px 0 4px; font-size:16px; letter-spacing:.05em}
+.cardlet p{margin:0; color:#7ee; font-size:13px}
+.cost{
+  position:absolute; left:10px; top:10px; background:#000; border:1px solid var(--line);
+  border-radius:6px; padding:3px 6px; font-size:12px; color:#0ff
+}
+/* MODULE ICON badge (instead of "Moduł X") */
+.modBadge{
+  position:absolute; right:10px; top:10px; border:1px solid var(--line); border-radius:6px;
+  padding:3px 6px; font-size:14px; background:#050505; color:#ff0; text-shadow:0 0 6px #ffff0070;
+}
+/* Nowe style dla wyboru strefy w modalu */
+.zoneSelect{margin:10px 0; padding:10px; border:1px dashed var(--line); border-radius:8px; display:flex; gap:10px;}
+.zoneButton{
+    all:unset; padding:8px 12px; border:1px solid var(--line); border-radius:6px; cursor:pointer;
+    flex-grow:1; text-align:center; transition:background .2s;
+    font-weight:700;
+}
+.zoneButton:hover{border-color:#0ff}
+.zoneButton.selected{background:#00ffff20; border-color:#0ff; box-shadow:0 0 8px #0ff;}
+
+/* Modal (decision/quiz as cards) */
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:50}
+.modal.show{display:flex; animation:fade .2s}
+@keyframes fade{from{opacity:0} to{opacity:1}}
+.window{
+  width:min(780px,92vw); background:var(--panel); border:1px solid var(--line);
+  border-radius:10px; box-shadow:0 40px 120px #000; overflow:hidden
+}
+.winHead{display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--line)}
+.winBody{padding:14px}
+.winFoot{display:flex; justify-content:flex-end; gap:8px; padding:12px 14px; border-top:1px solid var(--line)}
+.winTitle{margin:0; font-size:16px; letter-spacing:.08em}
+.optGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px}
+.optionCard{
+  border:1px solid var(--line); border-radius:10px; background:#050505; padding:12px; cursor:pointer;
+  box-shadow:0 12px 24px #000; transition:transform .15s, border-color .2s, box-shadow .2s
+}
+.optionCard:hover{transform:translateY(-4px); border-color:#0ff; box-shadow:0 16px 40px #000}
+.optionCard.selected{border-color:#0f0; box-shadow:0 0 10px #0f0;} 
+
+.optionHead{display:flex; align-items:center; gap:8px; font-weight:700; margin-bottom:6px; color:#ff0}
+.optionDesc{color:#8ff; font-size:14px}
+
+/* HUD */
+.hud{display:flex; gap:8px; align-items:center}
+.energy{display:inline-flex; gap:4px}
+.energy i{width:14px; height:14px; border-radius:3px; background:#000; border:1px solid var(--line)}
+.energy i.on{background:linear-gradient(180deg,#0ff,#09c)}
+
+/* Log */
+.log{height:160px; overflow:auto; padding:10px; background:#050505; border:1px dashed var(--line); border-radius:10px; color:#8ff}
+.pop{animation:pop .25s ease-out}
+@keyframes pop{from{transform:scale(.95); opacity:.5} to{transform:scale(1); opacity:1}}
+
+@media (max-width:1100px){ .grid{grid-template-columns:1fr} .hand{flex-wrap:wrap} }
+
+/* Boot screen */
+#boot{position:fixed; inset:0; background:#000; color:#0f0; z-index:9999; padding:20px; font-size:14px}
+#boot pre{white-space:pre-wrap}
+</style>
+</head>
+<body>
+
+<div id="main-container">
+<div id="boot"><pre id="bootLog"></pre></div>
+
+<header>
+  <h1>☢️ DEFCON: CRISIS PROTOCOL</h1>
+  <div class="hud">
+    <span class="badge">DEFCON: <b id="defconLevel">3</b></span>
+    <span class="badge">TURA: <b id="turn">1</b></span>
+    <span class="badge">ENERGIA</span>
+    <div id="energy" class="energy"></div>
+    <button id="endTurn" class="btn primary">⏭️ ZAKOŃCZ TURĘ</button>
+  </div>
+</header>
+
+<div class="grid">
+  <aside class="card">
+    <div class="sectionTitle">GLOBALNE SYSTEMY / WSKAŹNIKI</div>
+    <div class="resGrid">
+      <div class="res"><b>💠 Zasoby strategiczne</b><span id="r-budget">70</span><div class="bar"><i id="b-budget" class="mid" style="width:70%"></i></div></div>
+      <div class="res"><b>🧭 Dowództwo operacyjne</b><span id="r-staff">70</span><div class="bar"><i id="b-staff" class="mid" style="width:70%"></i></div></div>
+      <div class="res"><b>🛠️ Logistyka / sprzęt</b><span id="r-gear">60</span><div class="bar"><i id="b-gear" class="mid" style="width:60%"></i></div></div>
+      <div class="res"><b>🏛️ Infrastruktura krytyczna</b><span id="r-bci">60</span><div class="bar"><i id="b-bci" class="good" style="width:60%"></i></div></div>
+    </div>
+
+    <div class="sectionTitle" style="margin-top:12px">LOKALNE WSKAŹNIKI KRYZYSU</div>
+    <div class="resGrid">
+        <div class="res"><b>👥 Poparcie (Strefa A)</b><span id="r-trust_A">50</span><div class="bar"><i id="b-trust_A" class="mid" style="width:50%"></i></div></div>
+        <div class="res"><b>⚠️ Ryzyko (Strefa A)</b><span id="r-risk_A">50</span><div class="bar"><i id="b-risk_A" class="bad" style="width:50%"></i></div></div>
+        <div class="res"><b>👥 Poparcie (Strefa B)</b><span id="r-trust_B">50</span><div class="bar"><i id="b-trust_B" class="mid" style="width:50%"></i></div></div>
+        <div class="res"><b>⚠️ Ryzyko (Strefa B)</b><span id="r-risk_B">50</span><div class="bar"><i id="b-risk_B" class="bad" style="width:50%"></i></div></div>
+        <div class="res"><b>👥 Poparcie (Strefa C)</b><span id="r-trust_C">50</span><div class="bar"><i id="b-trust_C" class="mid" style="width:50%"></i></div></div>
+        <div class="res"><b>⚠️ Ryzyko (Strefa C)</b><span id="r-risk_C">50</span><div class="bar"><i id="b-risk_C" class="bad" style="width:50%"></i></div></div>
+    </div>
+
+    <div style="margin-top:10px" class="badge">🎯 CEL: Średnie Poparcie ≥ 50 • Max Ryzyko ≤ 70</div>
+
+    <div class="sectionTitle" style="margin-top:12px">DZIENNIK / COMMS</div>
+    <div id="log" class="log"></div>
+
+    <div class="sideBottom">
+      <button id="hint" class="btn">💡 PODPOWIEDŹ</button>
+      <button id="restart" class="btn">🔁 RESTART</button>
+    </div>
+  </aside>
+
+  <div class="table card">
+    <canvas id="radar"></canvas>
+    <div class="radialMask"></div>
+
+    <div class="board">
+      <div id="event" class="eventPanel pop">
+        <div class="tag">ALERT</div>
+        <h2 class="eventTitle" id="eventTitle">Inicjalizacja protokołu</h2>
+        <p id="eventDesc" class="desc">Nawiąż łączność, zintegruj systemy ostrzegania, przygotuj reakcję.</p>
+      </div>
+
+      <div id="hand" class="hand"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal" aria-modal="true" role="dialog">
+  <div class="window pop">
+    <div class="winHead">
+      <div class="winTitle" id="modalTitle">DECYZJA</div>
+      <button id="closeModal" class="btn">✖️ ZAMKNIJ</button>
+    </div>
+    <div id="modalBody" class="winBody"></div>
+    <div id="modalFoot" class="winFoot"></div>
+  </div>
+</div>
+</div><script>
+/* ================= BOOT SCREEN ================= */
+const bootLines = [
+  "INITIALIZING CRISIS-PROTOCOL SYSTEM...",
+  "LOADING STRATEGIC DATABASE...",
+  "CONNECTING TO COMMAND NETWORK...",
+  "GEOSPATIAL MODULE ONLINE...",
+  "SECURITY CLEARANCE: LEVEL 3 ACCEPTED",
+  "--- ENTERING DEFCON SIMULATION ---"
+];
+(function boot(){
+  const pre=document.getElementById('bootLog');
+  let i=0;
+  (function step(){
+    if(i<bootLines.length){ pre.textContent += bootLines[i++]+"\n"; setTimeout(step,550); }
+    else setTimeout(()=>document.getElementById('boot').remove(),700);
+  })();
+})();
+
+/* ================ STAN GRY (Rozszerzony o strefy) ================ */
+const S = {
+  turn:1, energy:3, moduleIndex:0,
+  res:{
+    budget:70, staff:70, gear:60, bci:60,
+    trust_A:50, risk_A:50,
+    trust_B:50, risk_B:50,
+    trust_C:50, risk_C:50
+  },
+  hand:[], deck:[], discard:[],
+  quizDone:Array(8).fill(false),
+  defcon:3,
+  // Zależności sąsiedztwa stref: A <-> B <-> C (cyklicznie)
+  zoneNeighbors: {
+      A: ['B', 'C'],
+      B: ['A', 'C'],
+      C: ['A', 'B']
+  }
+};
+const ZONES = ['A', 'B', 'C'];
+
+/* Ikony modułów */
+const MOD_ICONS = ["🌊","🏛️","🚧","🔁","🤝","📣","🏕️","🚌"];
+
+/* TALIA (Karty mają globalne efekty + efekt zależny od strefy (zoneEffect)) */
+const DECK = [
+ {module:0, emoji:"🗺️", title:"Mapowanie stref", text:"Modeluj lokalne strefy ryzyka (GIS).", cost:1,
+  globalEffects:{budget:-5, staff:-5, bci:+2},
+  zoneEffect:{risk:-8, trust:+3}, log:"Mapowanie (Strefa $ZONE$) → lepsza świadomość."},
+ {module:0, emoji:"🧱", title:"Worki z piaskiem", text:"Szybkie bariery dla budynków.", cost:1,
+  globalEffects:{budget:-8, gear:+5},
+  zoneEffect:{risk:-6, trust:+5}, log:"Worki w Strefie $ZONE$. Widoczne wsparcie w terenie."},
+ {module:1, emoji:"🗃️", title:"Sztab kryzysowy", text:"Wyznacz łańcuch dowodzenia i koordynację.", cost:1,
+  globalEffects:{bci:+4, staff:+2},
+  zoneEffect:{trust:+4, risk:-2}, log:"Sztab koordynuje Strefę $ZONE$. Jasna odpowiedzialność."},
+ {module:2, emoji:"🚧", title:"Rozporządzenie porządkowe", text:"Ograniczenie wjazdu do strefy.", cost:1,
+  globalEffects:{bci:+2},
+  zoneEffect:{risk:-8, trust:-3}, log:"Ograniczenie ruchu w Strefie $ZONE$. Mniejsze ryzyko (ale spadek poparcia)."},
+ {module:4, emoji:"🤝", title:"Porozumienie prywatne", text:"Zasoby operatorów / terminal.", cost:1,
+  globalEffects:{gear:+10, budget:-3},
+  zoneEffect:{trust:+3, risk:-3}, log:"Agregaty i pompy w drodze do Strefy $ZONE$."},
+ {module:5, emoji:"📣", title:"Alarm wielokanałowy", text:"RSO + megafony + BIP + SM.", cost:1,
+  globalEffects:{budget:-4},
+  zoneEffect:{risk:-10, trust:+8}, log:"Szerokie dotarcie komunikatów w Strefie $ZONE$."},
+ {module:6, emoji:"🏕️", title:"Punkty pomocy", text:"Woda, żywność, schronienie.", cost:1,
+  globalEffects:{budget:-6, staff:-2},
+  zoneEffect:{trust:+10, risk:-4}, log:"Uruchomiono PPiS w Strefie $ZONE$. Podstawowe potrzeby zabezpieczone."},
+ {module:7, emoji:"🚌", title:"Ewakuacja etapowa", text:"Transport wrażliwych grup.", cost:2,
+  globalEffects:{budget:-8, staff:-4},
+  zoneEffect:{risk:-15, trust:+7}, log:"Bezpieczna relokacja ze Strefy $ZONE$."},
+ {module:3, emoji:"🖥️", title:"Failover usług (BCP)", text:"Przełącz krytyczne systemy IT.", cost:2,
+  globalEffects:{bci:+10, budget:-6, staff:+5},
+  zoneEffect:{}, log:"Globalne: Usługi działają bez przerw (BCP)."} // Karta globalna - nie wymaga wyboru strefy
+];
+
+/* QUIZY (1× per moduł) */
+const QUIZZES = [
+ {q:"Element oceny ryzyka na poziomie gminy to:", opts:["Analiza podatności i ekspozycji","Tylko lista sprzętu","Wyłącznie social media"], a:0, pass:{trust_A:+2, trust_B:+2, trust_C:+2, bci:+2}, fail:{trust_A:-1, trust_B:-1, trust_C:-1}},
+ {q:"Kto kieruje działaniami OC na szczeblu gminy?", opts:["Wójt/Burmistrz/Prezydent","Dowolny urzędnik"], a:0, pass:{trust_A:+1, trust_B:+1, bci:+3}, fail:{trust_A:-1, trust_B:-1}},
+ {q:"Brak ograniczeń w strefie działań zwykle oznacza…", opts:["Większe ryzyko operacyjne","Lepsze bezpieczeństwo"], a:0, pass:{risk_A:-1, risk_B:-1, risk_C:-1}, fail:{risk_A:+3, risk_B:+3, risk_C:+3}},
+ {q:"BCP oznacza:", opts:["Plan ciągłości działania","Plan marketingu"], a:0, pass:{bci:+4, staff:+2}, fail:{bci:-3}},
+ {q:"Współpraca z sektorem prywatnym daje:", opts:["Dostęp do zasobów/logistyki","Wyłącznie koszty"], a:0, pass:{gear:+5, budget:-2}, fail:{budget:-2}},
+ {q:"Ostrzeganie vs alarmowanie:", opts:["Info o ryzyku vs wezwanie do działania","To samo"], a:0, pass:{trust_A:+2, trust_B:+2, trust_C:+2, risk_A:-2, risk_B:-2, risk_C:-2}, fail:{trust_A:-2, trust_B:-2, trust_C:-2}},
+ {q:"Pierwszy krok działań pomocowych:", opts:["Zapewnienie podstawowych potrzeb","Wysłanie newslettera"], a:0, pass:{trust_A:+2, trust_B:+2, trust_C:+2}, fail:{trust_A:-2, trust_B:-2, trust_C:-2}},
+ {q:"Środki indywidualnej ochrony:", opts:["Maski, łączność, latarki, apteczki","Buldożery"], a:0, pass:{bci:+2, gear:+3}, fail:{}}
+];
+
+
+/* ================= UTIL ================= */
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const clamp=v=>Math.max(0,Math.min(100,v));
+function apply(eff, zone=''){
+    for(const k in eff){
+        // Jeśli klucz ma już na końcu A, B lub C, oznacza to lokalny wskaźnik (np. risk_A), nie dodajemy nic
+        // W przeciwnym razie, jeśli podano strefę, tworzymy pełny klucz (np. risk_B)
+        const isLocalKey = k.endsWith('_A') || k.endsWith('_B') || k.endsWith('_C');
+        const key = isLocalKey ? k : (zone ? `${k}_${zone}` : k);
+
+        // Sprawdzamy, czy klucz istnieje w zasobach
+        if (S.res.hasOwnProperty(key)) {
+            // Bezpieczne pobieranie i aktualizacja wartości
+            S.res[key] = clamp((S.res[key] ?? 0) + eff[k]);
+        } else if (!isLocalKey && !zone && S.res.hasOwnProperty(k)){
+             // Obsługa kluczy globalnych bez strefy (np. budget)
+             S.res[k] = clamp((S.res[k] ?? 0) + eff[k]);
+        }
+    }
+    renderRes(); updateDefcon();
+}
+function log(line){ $("#log").innerHTML = `<div>• ${line}</div>` + $("#log").innerHTML; }
+function setEnergy(n){ S.energy=n; const box=$("#energy"); box.innerHTML=""; for(let i=0;i<3;i++){ const d=document.createElement("i"); if(i<n)d.classList.add("on"); box.appendChild(d); } }
+
+/* ================= RENDER ================= */
+function renderRes(){
+  // Global resources
+  const globalKeys=['budget','staff','gear','bci'];
+  globalKeys.forEach(k=>{
+    $("#r-"+k).textContent=S.res[k];
+    const bar=$("#b-"+k); bar.style.width=S.res[k]+"%";
+    bar.className=(S.res[k]>=60?'good':S.res[k]>=40?'mid':'bad');
+  });
+
+  // Local resources
+  const localKeys=['trust_A','risk_A','trust_B','risk_B','trust_C','risk_C'];
+  localKeys.forEach(k=>{
+    $("#r-"+k).textContent=S.res[k];
+    const bar=$("#b-"+k); bar.style.width=S.res[k]+"%";
+    if(k.startsWith('risk')){
+        bar.className=(S.res[k]>65?'bad':S.res[k]>45?'mid':'good');
+    } else { // trust
+        bar.className=(S.res[k]>=60?'good':S.res[k]>=40?'mid':'bad');
+    }
+  });
+
+  setupRadar();
+}
+function renderHand(){
+  const hand=$("#hand"); hand.innerHTML="";
+  S.hand.forEach((c,i)=>{
+    const el=document.createElement("div");
+    el.className="cardlet pop"; el.dataset.i=i;
+    // Sprawdzenie, czy karta wymaga wyboru strefy
+    const needsZone = c.zoneEffect && Object.keys(c.zoneEffect).length > 0 && c.title !== "Failover usług (BCP)"; 
+    el.innerHTML=`
+      <div class="cost">⚡ ${c.cost}</div>
+      <div class="modBadge" title="Moduł ${c.module+1}">${MOD_ICONS[c.module]||"◆"}</div>
+      <div class="emoji">${c.emoji}</div>
+      <h4>${c.title}</h4>
+      <p>${c.text}</p>
+      ${needsZone ? '<p style="margin-top:8px; color:#f0f; font-weight:700;">[Wymaga wyboru strefy]</p>' : ''}
+      `;
+    el.onclick=()=>openCardModal(c,i);
+    hand.appendChild(el);
+  });
+}
+
+/* ================= TALIA / TURY ================= */
+function buildDeck(){ S.deck=[...DECK].map((c,i)=>({...c,id:i})).sort(()=>Math.random()-0.5); }
+function draw(n=3){
+  while(n--){
+    if(!S.deck.length){ S.deck=[...S.discard].sort(()=>Math.random()-0.5); S.discard=[]; log("Talia przetasowana."); }
+    if(!S.deck.length) break;
+    S.hand.push(S.deck.shift());
+  }
+  renderHand();
+}
+function endTurn(){
+  if(MOD.classList.contains('show')) return;
+
+  const avgRisk = (S.res.risk_A + S.res.risk_B + S.res.risk_C) / 3;
+  const maxRisk = Math.max(S.res.risk_A, S.res.risk_B, S.res.risk_C);
+  const avgTrust = (S.res.trust_A + S.res.trust_B + S.res.trust_C) / 3;
+
+  if(S.res.bci < 40 || maxRisk > 90) return endGame(false);
+  if(S.moduleIndex>=7 && S.turn>=8){
+    if(avgTrust>=50 && maxRisk<=70 && S.res.bci >= 60) return endGame(true);
+  }
+
+  // --- LOGIKA PROPAGACJI RYZYKA ---
+  const riskIncrease = {};
+  ZONES.forEach(zone => {
+      if (S.res[`risk_${zone}`] > 60) {
+          const neighbors = S.zoneNeighbors[zone];
+          const increase = Math.floor((S.res[`risk_${zone}`] - 60) / 5);
+          neighbors.forEach(n => {
+              if (S.res[`risk_${n}`] < 80) {
+                 riskIncrease[`risk_${n}`] = (riskIncrease[`risk_${n}`] || 0) + increase;
+                 log(`⚠️ Propagacja: Ryzyko w Strefie ${n} wzrasta o ${increase} z powodu Strefy ${zone}.`);
+              }
+          });
+      }
+  });
+  apply(riskIncrease);
+
+
+  // --- LOSOWY TWIST GLOBALNY ---
+  if(Math.random()<0.45){
+    const twist=[
+      {t:"ATMOSPHERIC EVENT",d:"Ulewny deszcz. Opóźnienia ekip.",eff:{staff:-4, risk_A:+3, risk_B:+3, risk_C:+3}},
+      {t:"LOCAL BLACKOUT (LOSOWO)",d:"Awaria zasilania w Strefie B.",eff:{gear:-3, budget:-3, risk_B:+7, trust_B:-3}},
+      {t:"PRESS BRIEFING",d:"Spadek paniki.",eff:{trust_A:+5, trust_B:+5, trust_C:+5, risk_A:-3, risk_B:-3, risk_C:-3}}
+    ][Math.floor(Math.random()*3)];
+    apply(twist.eff);
+    toast(`⚠️ ${twist.t}: ${twist.d}`);
+  }
+
+
+  // --- KOLEJNA TURA ---
+  S.turn++; $("#turn").textContent=S.turn;
+  setEnergy(3);
+  S.hand=[]; draw(3);
+
+  // przejście modułów (quizy)
+  S.moduleIndex = Math.min(S.turn-1, 7);
+  if(S.turn <= 8 && !S.quizDone[S.moduleIndex]) openQuiz(S.moduleIndex);
+}
+
+/* ================= MODALE ================= */
+const MOD=$("#modal"), MTitle=$("#modalTitle"), MBody=$("#modalBody"), MFoot=$("#modalFoot");
+$("#closeModal").onclick=()=>closeModal();
+function openModal(){ MOD.classList.add("show"); $("#endTurn").disabled=true; }
+function closeModal(){ MOD.classList.remove("show"); $("#endTurn").disabled=false; }
+
+
+function openCardModal(card, handIndex){
+  if(S.energy<card.cost){ shakeEnergy(); return; }
+
+  MTitle.textContent = `${MOD_ICONS[card.module]||"◆"} ${card.title}`;
+  MBody.innerHTML = `<p class="desc">${card.text}</p>`;
+  MFoot.innerHTML = `<button id="decideBtn" class="btn primary" disabled>▶️ WYKONAJ AKCJĘ</button>
+                     <span class="badge">KOSZT: ⚡ ${card.cost}</span>`;
+
+  let selectedZone = null;
+  let selectedOption = -1; // -1 oznacza brak wybranej opcji
+  
+  // Wymuszenie needsZone
+  const needsZone = card.zoneEffect && Object.keys(card.zoneEffect).length > 0 && card.title !== "Failover usług (BCP)"; 
+
+  function updateDecideButton() {
+      // Przy założeniu jednej opcji 'AKTYWUJ' (która jest zawsze oznaczona jako data-i="0")
+      const optionSelected = selectedOption === 0; 
+      const zoneRequirementMet = !needsZone || selectedZone !== null;
+      $("#decideBtn").disabled = !(optionSelected && zoneRequirementMet);
+  }
+
+  // Jeśli karta wymaga wyboru strefy
+  if (needsZone) {
+      MBody.innerHTML += `
+        <div class="sectionTitle" style="margin-top:12px; color:#f0f;">❗ WYBIERZ STREFĘ DZIAŁANIA (OBOWIĄZKOWO):</div>
+        <div id="zoneSelect" class="zoneSelect">
+            <button class="zoneButton" data-zone="A">STREFA A</button>
+            <button class="zoneButton" data-zone="B">STREFA B</button>
+            <button class="zoneButton" data-zone="C">STREFA C</button>
+        </div>`;
+      
+      // LOGIKA WYBORU STREFY (POPRAWIONA)
+      $$("#zoneSelect .zoneButton").forEach(btn => {
+          btn.onclick = () => {
+              $$("#zoneSelect .zoneButton").forEach(x => x.classList.remove('selected'));
+              btn.classList.add('selected');
+              selectedZone = btn.dataset.zone;
+              updateDecideButton();
+          };
+      });
+  }
+
+  // Opcja Decyzji
+  MBody.innerHTML += `<div class="sectionTitle" style="margin-top:12px">DECYZJA OPERACYJNA:</div>
+        <div class="optGrid">
+        <div class="optionCard" data-i="0">
+            <div class="optionHead">✔ AKTYWUJ</div>
+            <div class="optionDesc">Potwierdź operację i zużyj energię.</div>
+        </div>
+        </div>`;
+
+  // Umożliwienie kliknięcia opcji (AKTYWUJ)
+  $$("#modal .optionCard").forEach(cardElement => {
+      cardElement.onclick = () => {
+          $$("#modal .optionCard").forEach(x => x.classList.remove('selected'));
+          cardElement.classList.add('selected');
+          selectedOption = +cardElement.dataset.i; // Ustawia wybraną opcję na 0 (AKTYWUJ)
+          updateDecideButton();
+      };
+      
+      // Aktywacja domyślna, jeśli karta nie wymaga strefy (aby przycisk był od razu klikalny)
+      if (!needsZone) {
+          cardElement.classList.add('selected');
+          selectedOption = +cardElement.dataset.i;
+          updateDecideButton();
+      }
+  });
+
+
+  openModal();
+
+  $("#decideBtn").onclick=()=>{
+    // Ostateczna weryfikacja
+    if (selectedOption !== 0) { toast("Wybierz opcję AKTYWUJ!"); return; } 
+    if (needsZone && !selectedZone) { toast("Wybierz strefę działania!"); return; }
+
+    let finalLog = card.log;
+
+    // 1. Zastosuj efekty globalne
+    if (card.globalEffects) {
+        apply(card.globalEffects);
+    }
+
+    // 2. Zastosuj efekty lokalne (jeśli istnieją i wybrano strefę)
+    if (needsZone && selectedZone) {
+        const localEff = {};
+        for(const k in card.zoneEffect) {
+            // Ponieważ apply ma logikę dodającą _ZONE, możemy po prostu przekazać k:v
+            localEff[k] = card.zoneEffect[k]; 
+        }
+        apply(localEff, selectedZone); // Przekazujemy strefę jako argument
+        finalLog = finalLog.replace('$ZONE$', selectedZone);
+    }
+    
+    // 3. Obsługa karty globalnej
+    if (!needsZone && finalLog.startsWith("Globalne: ")) {
+        finalLog = finalLog.substring("Globalne: ".length);
+    }
+
+    S.energy -= card.cost; setEnergy(S.energy);
+    log(finalLog || "Decyzja podjęta.");
+
+    S.discard.push(card);
+    S.hand.splice(handIndex,1);
+    renderHand();
+
+    $("#eventTitle").textContent = `${card.emoji} ${card.title} (${selectedZone || 'Globalnie'})`;
+    $("#eventDesc").textContent = finalLog;
+    pulseEvent();
+    closeModal();
+  };
+}
+
+function openQuiz(idx){
+  const q=QUIZZES[idx]; if(!q) return;
+  MTitle.textContent = `🧪 TEST – SEKCJA ${idx+1}`;
+  MBody.innerHTML = `<p class="desc">${q.q}</p>
+    <div class="optGrid">
+      ${q.opts.map((o,i)=>`
+        <div class="optionCard" data-i="${i}">
+          <div class="optionHead">🃏 ODPOWIEDŹ #${i+1}</div>
+          <div class="optionDesc">${o}</div>
+        </div>`).join("")}
+    </div>`;
+  MFoot.innerHTML = `<button id="quizOk" class="btn primary" disabled>📤 ZATWIERDŹ</button>`;
+  openModal();
+
+  let selected=-1;
+  $$("#modal .optionCard").forEach(card=>{
+    card.onclick=()=>{
+      $$("#modal .optionCard").forEach(x=>x.classList.remove('selected'));
+      card.classList.add('selected'); 
+      selected=+card.dataset.i;
+      $("#quizOk").disabled=false;
+    };
+  });
+  
+  $("#quizOk").onclick=()=>{
+    if(selected<0) return;
+    const ok=(selected===q.a);
+    if(ok){ apply(q.pass||{}); log("🎉 Test zaliczony. (+ premie globalne/lokalne)"); }
+    else { apply(q.fail||{}); log("❌ Błędna odpowiedź. (- kary)"); }
+    S.quizDone[idx]=true;
+    closeModal();
+  };
+}
+
+function endGame(win){
+  MTitle.textContent = win ? "MISSION STATUS: STAND DOWN" : "MISSION STATUS: FAILURE";
+  const r=S.res;
+  const avgTrust = ((r.trust_A + r.trust_B + r.trust_C) / 3).toFixed(0);
+  const maxRisk = Math.max(r.risk_A, r.risk_B, r.risk_C);
+  MBody.innerHTML = `
+    <p class="desc">${win ? "Stabilization achieved. Strategic command stands down. Przetrwałeś kryzys zarządzając lokalnymi strefami."
+                           : "Indicators outside safe bands. Escalation unacceptable. Kryzys wymknął się spod kontroli."}</p>
+    <div class="badge">IK: <b>${r.bci}</b> • Śr. Poparcie: <b>${avgTrust}</b> • Max Ryzyko: <b>${maxRisk}</b> • DEFCON: <b>${S.defcon}</b></div>`;
+  MFoot.innerHTML = `<button class="btn primary" onclick="location.reload()">🔁 RESTART</button>`;
+  openModal();
+}
+
+/* ================= UI FUN ================= */
+function pulseEvent(){ const el=$("#event"); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+function toast(t){ log(t); }
+function shakeEnergy(){ $("#energy").classList.remove('pop'); void $("#energy").offsetWidth; $("#energy").classList.add('pop'); toast("⚡ ZA MAŁO ENERGII"); }
+
+/* ================= DEFCON LOGIKA ================= */
+function updateDefcon(){
+  const avgTrust = (S.res.trust_A + S.res.trust_B + S.res.trust_C) / 3;
+  const avgRisk = (S.res.risk_A + S.res.risk_B + S.res.risk_C) / 3;
+
+  const avg = (avgRisk + (100 - avgTrust)) / 2;
+  S.defcon = (avg > 70) ? 1 : (avg > 55) ? 2 : (avg > 40) ? 3 : (avg > 25) ? 4 : 5;
+  $("#defconLevel").textContent = S.defcon;
+}
+
+/* ================= SKALOWANIE WIDOKU (POPRAWIONE) ================= */
+function updateScaling() {
+    const container = document.getElementById('main-container');
+    const baseWidth = 1300;
+    const baseHeight = 900;
+    const widthRatio = window.innerWidth / baseWidth;
+    const heightRatio = window.innerHeight / baseHeight;
+    
+    // Obliczanie współczynnika skalowania. Nie skalujemy powyżej 1 (jeśli okno jest większe niż 1300x900)
+    const scale = Math.min(widthRatio, heightRatio, 1);
+    
+    // Używamy tylko skalowania. Centrowanie jest obsługiwane przez CSS (body: flex/center)
+    container.style.transform = `scale(${scale})`;
+}
+
+
+/* ================= START ================= */
+function start(){
+  buildDeck(); setEnergy(3); renderRes(); updateDefcon(); draw(3);
+  $("#endTurn").onclick=endTurn;
+  $("#restart").onclick=()=>location.reload();
+  $("#hint").onclick=()=>toast("🎯 Zarządzaj zasobami globalnie, aby kontrolować ryzyko i poparcie w 3 strefach (A, B, C). Pamiętaj o propagacji ryzyka!");
+  setupRadar();
+  
+  // Uruchomienie skalowania i jego aktualizacja przy zmianie rozmiaru okna
+  window.addEventListener('resize', updateScaling);
+  updateScaling();
+
+  // Pokaż kontener po obliczeniu początkowego skalowania
+  document.getElementById('main-container').style.visibility = 'visible';
+}
+start();
+
+/* ================= RADAR / WIZUALIZACJA STREF (NAPRAWIONE SKALOWANIE) ================= */
+function setupRadar(){
+  const c=document.getElementById("radar"), ctx=c.getContext("2d");
+  
+  // POPRAWKA: Pobieranie rozmiaru z parentElement zamiast window
+  function resize(){ c.width=c.parentElement.clientWidth; c.height=c.parentElement.clientHeight; }
+  resize(); addEventListener('resize',resize);
+  let t=0;
+
+  const zoneColors = {
+      A: '#0ff', B: '#ff0', C: '#f00'
+  };
+
+  function getRiskColor(risk){
+      const r = Math.min(255, Math.floor((risk-50)*2.55));
+      const g = Math.min(255, Math.floor((100-risk)*2.55));
+      return `rgba(${r}, ${g}, 0, 0.4)`;
+  }
+
+  function loop(){
+    ctx.fillStyle="rgba(0,0,0,0.25)";
+    ctx.fillRect(0,0,c.width,c.height);
+
+    const cx=c.width/2, cy=c.height/2;
+    const r=Math.min(c.width,c.height)/3;
+
+    // 1. Wizualizacja STREF
+    const angleStep = (2 * Math.PI) / 3;
+    ZONES.forEach((zone, i) => {
+        const startAngle = i * angleStep + (Math.PI/2);
+        const endAngle = (i + 1) * angleStep + (Math.PI/2);
+        
+        // Wizualizacja poziomu RYZYKA
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, endAngle);
+        ctx.closePath();
+        
+        const riskLevel = S.res[`risk_${zone}`] / 100;
+        const riskColor = riskLevel > 0.4 ? getRiskColor(S.res[`risk_${zone}`]) : 'rgba(0,0,0,0)';
+        ctx.fillStyle = riskColor;
+        ctx.fill();
+
+        // Podkreślenie konturów strefy
+        ctx.strokeStyle = zoneColors[zone] + '55';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, endAngle);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Blip reprezentujący POZIOM POPARCIA
+        const blipRadius = 5 + (S.res[`trust_${zone}`] / 10);
+        const midAngle = startAngle + angleStep / 2;
+        const blipX = cx + Math.cos(midAngle) * r * 0.75;
+        const blipY = cy + Math.sin(midAngle) * r * 0.75;
+        
+        ctx.fillStyle = zoneColors[zone];
+        ctx.globalAlpha = 0.5 + (S.res[`trust_${zone}`] / 200);
+        ctx.beginPath();
+        ctx.arc(blipX, blipY, blipRadius * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+
+    // 2. SWEEP RADARU
+    const sweepR = r * 1.3;
+    const ang=t/55;
+    const x=cx+Math.cos(ang)*sweepR, y=cy+Math.sin(ang)*sweepR;
+    const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,sweepR);
+    grad.addColorStop(0,"rgba(0,255,255,.20)");
+    grad.addColorStop(1,"rgba(0,255,255,0)");
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,sweepR,ang-0.25,ang+0.02); ctx.closePath(); ctx.fill();
+
+    // 3. Centralny krzyż
+    ctx.strokeStyle="#00ffff"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(cx-r,cy); ctx.lineTo(cx+r,cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx,cy+r); ctx.stroke();
+
+    t++; requestAnimationFrame(loop);
+  }
+  loop();
+}
+</script>
+</body>
+</html>

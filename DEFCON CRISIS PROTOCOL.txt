@@ -1,0 +1,56 @@
+DEFCON: CRISIS PROTOCOL - GEOSIM EDITION
+INSTRUKCJA OBSŁUGI
+============================================================
+
+CEL GRY:
+Przetrwaj 8 tur (Modułów) i osiągnij stabilizację. Musisz utrzymać wskaźniki w bezpiecznych granicach.
+Osiągnij ZWYCIĘSTWO po 8. turze, jeśli:
+1.  Średnie Poparcie we wszystkich strefach jest ≥ 50.
+2.  Maksymalne Ryzyko w dowolnej strefie jest ≤ 70.
+3.  Infrastruktura Krytyczna (BCI) jest ≥ 60.
+
+WARUNKI PORAŻKI (NATYCHMIASTOWA ESCALACJA):
+- Wskaźnik Infrastruktury Krytycznej (BCI) spadnie poniżej 40.
+- Maksymalne Ryzyko w dowolnej strefie przekroczy 90.
+
+============================================================
+WSKAŹNIKI I ZASOBY
+============================================================
+
+***ZASOBY GLOBALNE (Wskaźniki po lewej stronie)***
+Poziom zasobów od 0 do 100%. Spadek poniżej 40% (żółty) i 20% (czerwony) zwiększa trudność.
+-   💠 Zasoby strategiczne (BUDGET): Finanse na operacje.
+-   🧭 Dowództwo operacyjne (STAFF): Dostępny personel i koordynacja.
+-   🛠️ Logistyka / sprzęt (GEAR): Zapasy i środki techniczne.
+-   🏛️ Infrastruktura krytyczna (BCI): Stan kluczowej infrastruktury.
+
+***WSKAŹNIKI LOKALNE (Strefy A, B, C)***
+Wskaźniki kluczowe dla powodzenia misji. Zmieniają się pod wpływem kart i Propagacji Ryzyka.
+-   👥 Poparcie (TRUST): Zaufanie i morale ludności. Wpływa na efektywność działań.
+-   ⚠️ Ryzyko (RISK): Poziom zagrożenia operacyjnego i eskalacji kryzysu w strefie.
+
+***PROPAGACJA RYZYKA:***
+Jeśli Ryzyko w którejkolwiek strefie przekroczy **60**, jest ono automatycznie propagowane (rozprzestrzeniane) na sąsiednie strefy (A<->B<->C) w kolejnej turze, zwiększając ich lokalne Ryzyko.
+
+============================================================
+ROZGRYWKA (FAZY TURY)
+============================================================
+
+1.  **FAZA POCZĄTKOWA (Start Tury):**
+    -   DEFCON oraz TURA są aktualizowane.
+    -   Otrzymujesz 3 jednostki **ENERGII (⚡)**.
+    -   Dociągasz 3 karty Decyzji.
+
+2.  **FAZA AKCJI (Twoje Działania):**
+    -   Zużywając Energię, aktywujesz karty Decyzji z ręki.
+    -   **AKTYWACJA KARTY:**
+        -   Wybierz kartę i kliknij ją.
+        -   **Koszt:** Karta zużywa 1 lub 2 jednostki Energii (⚡).
+        -   **Wybór Strefy:** Większość kart **wymaga** wybrania jednej ze Stref (A, B lub C). Musisz kliknąć przycisk strefy, aby go podświetlić i aktywować przycisk **WYKONAJ AKCJĘ**. Karta globalna ("Failover usług (BCP)") nie wymaga wyboru strefy.
+        -   Po aktywacji, karta trafia na stos kart odrzuconych.
+    -   **TEST (QUIZ):** Na początku każdej z pierwszych 8 tur pojawi się Quiz/Test związany z danym modułem operacyjnym (np. Moduł 1: Mapowanie stref). Poprawna odpowiedź daje bonusy, błędna - kary.
+
+3.  **FAZA KONIEC TURY:**
+    -   Po wykorzystaniu dostępnej Energii lub podjęciu wszystkich decyzji, kliknij **⏭️ ZAKOŃCZ TURĘ**.
+    -   System przeliczy efekty Propagacji Ryzyka i wylosuje Twist Globalny (zdarzenie losowe).
+    -   Rozpoczyna się kolejna tura.
